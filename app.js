@@ -10,25 +10,31 @@ let routes = {
   '/cars/new' : 'add_car.html',
 }
 
+// set up the server
 var server = http.createServer(function(request, response) {
   console.log(`client requested URL: ${request.url}`);
 
-
+  // check to see if request is for defined route and handle it
   if ( request.url in routes ) {
-    console.log(`defined route found --> ${request.url}`);
+    // console.log(`defined route found --> ${request.url}`);
     serveView(routes[request.url], response);
-  } else {
+
+  } else { // check for file request from view and handle it
     // parse the request
-    let urlParts = request.url.split('/');
-    console.log(urlParts);
+    let parsedRequest = request.url.split('/'),
+        directory = parsedRequest[1],
+        filePath = parsedRequest.slice(2).join('/');
+    // console.log(parsedRequest);
+    // console.log(`directory = ${directory}`);
+    // console.log(`filePath = ${filePath}`);
 
-    if ( request.url === '/stylesheets/style.css' ) {
-      fs.readFile('stylesheets/style.css', 'utf8', function(error, contents) {
-        response.writeHead(200, {'Content-Type': 'text/css'});
-        response.write(contents);
-        response.end();
-      })
 
+    if ( directory === 'images' ) {
+      // image file from requested
+      serveImage(filePath, response);
+    } else if ( directory === 'stylesheets' ) {
+      // serve css file
+      serveTextFile(`${directory}/${filePath}`, response);
     } else {
       response.writeHead(404);
       response.end('File not found!');
@@ -36,15 +42,36 @@ var server = http.createServer(function(request, response) {
   }
 
 });
-
+// start up the server on the port
 server.listen(port);
 console.log(`server listening on port ${port}`);
 
-function serveView(filename, response) {
-  fs.readFile(`views/${filename}`, 'utf8', function(error, contents) {
+function serveView(filePath, response) {
+  fs.readFile(`views/${filePath}`, 'utf8', function(error, contents) {
     response.writeHead(200, {'Content-Type': 'text/html'});
     response.write(contents);
     response.end();
   });
+}
 
+function serveImage(filePath, response) {
+  let imageType = filePath.slice(filePath.lastIndexOf('.') + 1);
+  fs.readFile(`images/${filePath}`, function(error, contents) {
+    response.writeHead(200, {'Content-Type': `image/${imageType}`});
+    response.write(contents);
+    response.end();
+  });
+}
+
+function serveTextFile(filePath, response) {
+  let types = {
+    css : 'css',
+    js : 'javascript',
+  };
+  let fileType = types[filePath.slice(filePath.lastIndexOf('.') + 1)];
+  fs.readFile(filePath, 'utf8', function(error, contents) {
+    response.writeHead(200, {'Content-Type': `text/${fileType}`});
+    response.write(contents);
+    response.end();
+  });
 }
